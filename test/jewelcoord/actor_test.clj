@@ -1,0 +1,63 @@
+(ns jewelcoord.actor-test
+  (:require [clojure.test :refer [deftest is testing]]
+            [jewelcoord.actor :as actor]
+            [jewelcoord.store :as store]))
+
+(defn- fresh-store []
+  (let [st (store/mem-store)]
+    (store/register-jeweller! st {:jeweller-id "jeweller-1" :name "Kobo Yamada"})
+    (store/register-workshop! st {:workshop-id "W-1" :name "Kobo Atelier" :max-supply-cost 2000})
+    st))
+
+(deftest commits-a-registered-inventory-log
+  (let [st (fresh-store)
+        graph (actor/build-graph {:store st})
+        request {:jeweller-id "jeweller-1" :op :log-inventory-record :stake :low
+                  :workshop-id "W-1" :task "finished-piece inventory log"}
+        result (actor/run-request! graph request {} "thread-1")]
+    (is (= :done (:status result)))
+    (is (some? (get-in result [:state :record])))
+    (is (= 1 (count (store/records-of st "jeweller-1"))))))
+
+(deftest holds-an-unregistered-workshop-proposal
+  (let [st (fresh-store)
+        graph (actor/build-graph {:store st})
+        request {:jeweller-id "jeweller-1" :op :log-inventory-record :stake :low
+                  :workshop-id "W-ghost" :task "finished-piece inventory log"}
+        result (actor/run-request! graph request {} "thread-2")]
+    (is (= :hold (:disposition (:state result))))
+    (is (empty? (store/records-of st "jeweller-1")))))
+
+(deftest interrupts-then-approves-safety-concern-on-human-approval
+  (let [st (fresh-store)
+        graph (actor/build-graph {:store st})
+        request {:jeweller-id "jeweller-1" :op :flag-safety-concern :stake :low
+                  :workshop-id "W-1" :hazard-type :burn-exposure-risk}
+        interrupted (actor/run-request! graph request {} "thread-3")]
+    (is (= :interrupted (:status interrupted)))
+    (is (empty? (store/records-of st "jeweller-1")))
+    (let [resumed (actor/approve! graph "thread-3")]
+      (is (= :done (:status resumed)))
+      (is (= 1 (count (store/records-of st "jeweller-1")))))))
+
+(deftest holds-a-scope-excluded-op-even-at-high-confidence
+  (testing "an actor run can never commit a proposal that would finalize a jewellery-fabrication-execution decision, regardless of disposition path"
+    (let [st (fresh-store)
+          graph (actor/build-graph {:store st})
+          request {:jeweller-id "jeweller-1" :op :finalize-fabrication-decision :stake :low
+                    :workshop-id "W-1" :task "fabrication decision"}
+          result (actor/run-request! graph request {} "thread-4")]
+      (is (= :done (:status result)))
+      (is (= :hold (:disposition (:state result))))
+      (is (empty? (store/records-of st "jeweller-1"))))))
+
+(deftest holds-a-custody-transfer-authorization-even-at-high-confidence
+  (testing "an actor run can never commit a proposal that would authorize a precious-materials custody transfer, regardless of disposition path"
+    (let [st (fresh-store)
+          graph (actor/build-graph {:store st})
+          request {:jeweller-id "jeweller-1" :op :authorize-custody-transfer :stake :low
+                    :workshop-id "W-1" :task "custody transfer authorization"}
+          result (actor/run-request! graph request {} "thread-5")]
+      (is (= :done (:status result)))
+      (is (= :hold (:disposition (:state result))))
+      (is (empty? (store/records-of st "jeweller-1"))))))
