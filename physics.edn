@@ -1,0 +1,45 @@
+;; What this vertical's robot physically does, declared for
+;; kotoba.robotics.process (kotoba-lang/robotics). `kbb -M:physics` runs it.
+;;
+;; README "Robotics premise": a workshop scheduling/logistics/inventory-logging
+;; coordination robot handles crew scheduling, precious-material inventory
+;; records and supply orders for a jewellery and precious-metal workshop
+;; (ISCO 7313). Its physical work: carrying the tray of pieces and stock
+;; between benches and the safe, setting an investment-casting flask into the
+;; burnout kiln, and the flask's burnout soak itself (how long until its
+;; centre is at temperature).
+;;
+;; Every number without a cited source is marked `estimate` in its :basis.
+;; Replacing an estimate with a sourced value is this bot's growth work.
+{:physics/schema "itonami.physical-ai.spec.v1"
+ :repo "cloud-itonami/cloud-itonami-isco-7313"
+ :cases
+ [{:id :tray-to-safe
+   :kind :transport
+   :procedure "small cart carries the locked tray of pieces and precious stock from the benches to the safe at end of shift"
+   :params {:mass-kg 30.0 :payload-kg 8.0 :v-max-mps 0.8 :a-max-mps2 0.4
+            :brake-decel-mps2 0.6 :drive-force-n 60.0 :crr 0.015
+            :cog-height-m 0.45 :support-half-length-m 0.20 :max-time-s 1200.0}
+   :sweep {:param :distance-m :values [5.0 10.0 15.0 25.0 40.0]}
+   :quantity :cycle-time-s
+   :limit {:max 30.0 :basis "estimate: custody-transfer leg kept short so the tray is never out of camera view for long"}
+   :boundary {:lo 2.0 :hi 100.0}}
+  {:id :flask-into-kiln
+   :kind :manipulator
+   :procedure "arm with flask tongs sets an investment-casting flask from the bench into the burnout kiln"
+   :params {:l1-m 0.50 :l2-m 0.45 :m1-kg 5.0 :m2-kg 4.0
+            :from [0.40 0.30] :to [0.85 0.20] :duration-s 2.5 :steps 500}
+   :sweep {:param :payload-kg :values [0.5 1.0 2.0 3.5 5.0]}
+   :quantity :peak-tau1-nm
+   :limit {:max 60.0 :basis "estimate: continuous shoulder torque of a light collaborative arm (~5 kg class)"}
+   :boundary {:lo 0.1 :hi 20.0}}
+  {:id :flask-burnout-soak
+   :kind :thermal
+   :procedure "gypsum investment in the flask soaks at 730 C until its centre (insulated symmetry plane) reaches 700 C"
+   :params {:thickness-m 0.04 :conductivity-w-mk 0.5 :density-kg-m3 1500.0 :specific-heat-j-kgk 1000.0
+            :t0-c 150.0 :t-hot-c 730.0 :h-front-w-m2k 40.0 :h-back-w-m2k 0.0 :t-back-ambient-c 730.0
+            :threshold-c 700.0 :duration-s 21600.0 :nodes 11}
+   :sweep {:param :thickness-m :values [0.02 0.03 0.04 0.05 0.065]}
+   :quantity :time-to-threshold-s
+   :limit {:max 10800.0 :basis "estimate: a 3-hour top-temperature hold as in common gypsum-investment burnout schedules; the investment maker's schedule is the source to cite"}
+   :boundary {:lo 0.01 :hi 0.1}}]}
