@@ -1,7 +1,7 @@
 (ns jewelcoord.store
   "SSoT for the ISCO-08 7313 jewellery and precious metal workshop
   scheduling/logistics/inventory-logging coordination actor (itonami
-  actor pattern, ADR-2607121000 / CLAUDE.md Actors section; README's
+  actor pattern, ADR-2607121000 / AGENTS.md Actors section; README's
   'Robotics premise' — a workshop scheduling/logistics coordination
   robot performs crew scheduling, precious-material/finished-piece
   inventory data logging and non-precious materials/tools
