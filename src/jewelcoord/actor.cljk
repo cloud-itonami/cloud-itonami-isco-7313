@@ -1,7 +1,7 @@
 (ns jewelcoord.actor
   "JewelCoordActor — the ISCO-08 7313 jewellery and precious metal
   workshop scheduling/logistics/inventory-logging coordination actor
-  as a `langgraph.graph/state-graph` (ADR-2607121000 / CLAUDE.md
+  as a `langgraph.graph/state-graph` (ADR-2607121000 / AGENTS.md
   Actors section). One graph run = one workshop-coordination operation
   request (intake -> advise -> govern -> decide -> commit/hold, with
   a human-approval interrupt for escalated proposals). No infinite
